@@ -1,0 +1,104 @@
+# 1 Importar dataset
+
+import pandas as pd 
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier 
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import classification_report, accuracy_score
+
+df_heart = pd.read_csv('../archive/heart.csv')
+
+# 1.2 Verificar as colunas 
+
+df_heart.head()
+df_heart.info()
+
+# 1.3 Filtragem de valores ausentes 
+
+ausente = df_heart[df_heart == '?'] 
+print(ausente.head())
+
+# 2 substituir os nulos
+
+media = df_heart.mean()
+
+
+df_heart.fillna(media, inplace= True)
+
+# 3 Defina X e y 
+
+# 3.1 definindo o targert
+
+df_heart['target'], uniques = pd.factorize(df_heart['target'])
+
+# 3.2 Defina o X 
+
+X = df_heart[['age','sex','cp','trestbps','chol','fbs','restecg','thalach','exang','oldpeak','slope','ca','thal']]
+y = df_heart['target']
+
+# 3.3 Separação treino/teste
+
+X_test,X_train,y_test,y_train = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 3.4 scaling
+
+scaling = StandardScaler()
+
+#3.5 Fit Transform Treino
+
+X_train_scaled = scaling.fit_transform(X_train)
+
+# 3.6 Transform Test
+
+X_test_scaled = scaling.transform(X_test)
+
+# 3.7 RandoForest usa-se no X_train_Scaled e y_train
+
+randomF = RandomForestClassifier(random_state=42)
+
+randomF.fit(X_train_scaled,y_train)
+
+# 4 Grid Search e Parametros 
+
+# 4.1 parametros
+
+param_gride = {
+    'n_estimators': [50, 100, 200, 300]
+}
+
+# 4.2 Grid Search
+
+rf = GridSearchCV(
+estimator=randomF,
+param_grid=param_gride,
+cv=5 ,
+scoring='accuracy',
+n_jobs=-1
+)
+
+# 4.3 ajuste com fit (Treinamento do GridSearch) usando treino
+
+rf.fit(X_train_scaled,y_train)
+print("\n--- Tuning Concluído ---")
+print("Melhor n_estimators encontrado:", rf.best_params_['n_estimators'])
+
+# 5 Avaliação
+
+# 5.1 melhor GridSearch
+
+best_rf = rf.best_estimator_ 
+
+# 5.2 Previsão conjunto teste
+
+y_pred = best_rf.predict(X_test_scaled)
+
+# 5.3 calculando Accuracy (y de teste e y de predição )
+
+acuracia = accuracy_score(y_test, y_pred)
+
+print(f"\n--- Avaliação Final do Modelo Tunado ---")
+print(f"Acurácia Final nos Dados de Teste: {acuracia:.4f}")
+print("\nRelatório de Classificação:")
+print(classification_report(y_test, y_pred))
